@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
-import { ArrowLeft, Volume2, VolumeX, Star, Clock, CheckCircle, Save, Info, Play, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX, Clock, CheckCircle, Save, Info, Play, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const activities = [
@@ -39,7 +39,7 @@ function speak(text) {
 }
 
 const BehavioralSkills = () => {
-    const { progress, updateProgress, settings } = useUser();
+    const { updateProgress, settings } = useUser();
     const { calmMode } = settings;
 
     const [phase, setPhase] = useState('home'); // home, tutorial, practice, quiz, reward
@@ -58,7 +58,7 @@ const BehavioralSkills = () => {
         if (phase === 'tutorial') speak(`${selected.title}. Step 1. ${selected.steps[0]}`);
         if (phase === 'practice') speak(`Practice ${selected.title} for forty five seconds`);
         if (phase === 'quiz') speak(`What comes after ${selected.steps[quizTargetStep - 1]}?`);
-    }, [phase, selected, soundOn]);
+    }, [phase, selected, soundOn, quizTargetStep]);
 
     // Tutorial Auto-Advance
     useEffect(() => {

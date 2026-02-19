@@ -1,6 +1,6 @@
 import React from 'react';
 import { useUser } from '../context/UserContext';
-import { User, Mail, GraduationCap, MapPin, Award } from 'lucide-react';
+import { Mail, GraduationCap, MapPin, Award } from 'lucide-react';
 
 const MemberPage = () => {
     const { user } = useUser();

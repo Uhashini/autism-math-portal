@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, CheckCircle, ClipboardList, Star, User, Calendar, MessageSquare, PlusCircle, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle, Star, User, Calendar, MessageSquare, AlertCircle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { Link } from 'react-router-dom';
 
