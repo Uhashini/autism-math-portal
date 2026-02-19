@@ -28,6 +28,7 @@ export const UserProvider = ({ children }) => {
         lastPlayed: null,
         snackShopAccuracy: 0,
         pizzaBuilderAccuracy: 0,
+        behaviorAccuracy: 0,
         sessions: 0,
         totalTime: 0
     });
@@ -99,11 +100,14 @@ export const UserProvider = ({ children }) => {
 
             let newSnackAcc = prev.snackShopAccuracy || 0;
             let newPizzaAcc = prev.pizzaBuilderAccuracy || 0;
+            let newBehaviorAcc = prev.behaviorAccuracy || 0;
 
             if (gameData.gameType === 'snack') {
                 newSnackAcc = Math.round(((prev.snackShopAccuracy || 0) * (newSessions - 1) + gameData.accuracy) / newSessions);
             } else if (gameData.gameType === 'pizza') {
                 newPizzaAcc = Math.round(((prev.pizzaBuilderAccuracy || 0) * (newSessions - 1) + gameData.accuracy) / newSessions);
+            } else if (gameData.gameType === 'behavior') {
+                newBehaviorAcc = Math.round(((prev.behaviorAccuracy || 0) * (newSessions - 1) + gameData.accuracy) / newSessions);
             }
 
             const nextProgress = {
@@ -113,6 +117,7 @@ export const UserProvider = ({ children }) => {
                 sessions: newSessions,
                 snackShopAccuracy: newSnackAcc,
                 pizzaBuilderAccuracy: newPizzaAcc,
+                behaviorAccuracy: newBehaviorAcc,
                 streak: newStreak,
                 lastPlayed: today,
                 totalTime: (prev.totalTime || 0) + (gameData.time || 0)

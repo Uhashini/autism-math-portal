@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, LayoutDashboard, MessageSquare, Info, Star, User } from 'lucide-react';
+import { Home, LayoutDashboard, MessageSquare, Info, Star, User, Heart } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 const NavBar = () => {
@@ -20,9 +20,13 @@ const NavBar = () => {
                     <LayoutDashboard size={20} />
                     <span>Dashboard</span>
                 </Link>
-                <Link to="/feedback" className={isActive('/feedback') ? 'active' : ''}>
+                <Link to="/behavior" className={isActive('/behavior') ? 'active' : ''}>
+                    <Heart size={20} />
+                    <span>Social</span>
+                </Link>
+                <Link to="/comprehensive-review" className={isActive('/comprehensive-review') ? 'active' : ''}>
                     <MessageSquare size={20} />
-                    <span>Feedback</span>
+                    <span>Review</span>
                 </Link>
                 <Link to="/member" className={isActive('/member') ? 'active' : ''}>
                     <User size={20} />

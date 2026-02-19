@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard';
 import ProductDescription from './pages/ProductDescription';
 import FeedbackForm from './pages/FeedbackForm';
 import MemberPage from './pages/MemberPage';
+import BehavioralSkills from './pages/BehavioralSkills';
+import ComprehensiveFeedback from './pages/ComprehensiveFeedback';
 
 const AppContent = () => {
   const { settings, toggleCalmMode, toggleTimer } = useUser();
@@ -62,6 +64,8 @@ const AppContent = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/product-page" element={<ProductDescription />} />
           <Route path="/feedback" element={<FeedbackForm />} />
+          <Route path="/behavior" element={<BehavioralSkills />} />
+          <Route path="/comprehensive-review" element={<ComprehensiveFeedback />} />
           <Route path="/member" element={<MemberPage />} />
         </Routes>
       </div>
