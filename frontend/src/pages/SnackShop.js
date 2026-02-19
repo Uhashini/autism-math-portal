@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, HelpCircle, CheckCircle2, AlertCircle, Play, Home, Clock } from 'lucide-react';
+import { Star, HelpCircle, CheckCircle2, AlertCircle, Play, Home, Clock, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ScreenCapture } from 'react-screen-capture';
 import { useUser } from '../context/UserContext';
