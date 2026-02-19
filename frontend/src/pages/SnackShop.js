@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, RefreshCw, Star, Coins, HelpCircle, CheckCircle2, AlertCircle, Play, Home, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ScreenCapture } from 'react-screen-capture';
 import { useUser } from '../context/UserContext';
 
 const SnackShop = () => {
@@ -13,6 +14,7 @@ const SnackShop = () => {
 
     // Round State
     const [round, setRound] = useState(1);
+    const [screenCapture, setScreenCapture] = useState('');
     const [mode, setMode] = useState(1); // 1: Make ₹X, 2: Buy 2, 3: Change
     const [target, setTarget] = useState(0);
     const [currentTotal, setCurrentTotal] = useState(0);
@@ -101,6 +103,40 @@ const SnackShop = () => {
         }
     };
 
+    const handleScreenCapture = (screenCapture) => {
+        setScreenCapture(screenCapture);
+    };
+
+    const handleDownload = () => {
+        const base64Parts = screenCapture.split(',');
+        const contentType = base64Parts[0].split(':')[1].split(';')[0];
+        const base64Data = base64Parts[1];
+
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+            const slice = byteCharacters.slice(offset, offset + 512);
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+
+        const blob = new Blob(byteArrays, { type: contentType });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.download = 'my-math-achievement.png';
+        link.href = url;
+        link.click();
+
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    };
+
     const handleStart = () => {
         setGameState('playing');
         startNewRound(1);
@@ -156,6 +192,29 @@ const SnackShop = () => {
         }
     };
 
+    // Keyboard Accessibility
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (gameState !== 'playing') return;
+
+            // Mapping number keys 1-6 to available coins
+            const keyMap = { '1': 1, '2': 2, '3': 5, '4': 10, '5': 20, '6': 50 };
+            const val = keyMap[e.key];
+
+            if (val && levelConfigs[level].coins.includes(val)) {
+                addCoin(val);
+            }
+
+            if (e.key === 'Enter') handleSubmit();
+            if (e.key === 'Backspace') {
+                if (selectedCoins.length > 0) removeCoin(selectedCoins.length - 1);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [gameState, level, selectedCoins, currentTotal]);
+
     if (gameState === 'setup') {
         return (
             <div className="game-container" style={{ maxWidth: '900px', margin: '2rem auto' }}>
@@ -204,6 +263,14 @@ const SnackShop = () => {
                             </li>
                             <li style={{ marginTop: '0.5rem' }}>Tap a coin to add it to your basket. Tap it again in your basket to remove it!</li>
                         </ul>
+                        <div style={{ background: '#eef2ff', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid #c7d2fe' }}>
+                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#4338ca' }}>⌨️ Keyboard Shortcuts</h4>
+                            <ul style={{ fontSize: '0.85rem', paddingLeft: '1.2rem', margin: 0 }}>
+                                <li><strong>1-6:</strong> Pick available coins</li>
+                                <li><strong>Enter:</strong> Submit payment</li>
+                                <li><strong>Backspace:</strong> Remove last coin</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -229,65 +296,82 @@ const SnackShop = () => {
     }
 
     return (
-        <div className={`game-layout ${calmMode ? 'calm-mode' : ''}`}>
-            {/* Game Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', background: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow)' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <div className="btn" style={{ background: '#f1c40f', padding: '0.4rem 0.8rem' }}><Star size={18} /> {stars}</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Round {round}/5</div>
-                </div>
-                {timerOn && <div className="timer-display" style={{ background: '#f8f9fa', padding: '0.4rem 0.8rem', borderRadius: '8px' }}><Clock size={16} /> Round Timer</div>}
-            </div>
+        <ScreenCapture onEndCapture={handleScreenCapture}>
+            {({ onStartCapture }) => (
+                <div className={`game-layout ${calmMode ? 'calm-mode' : ''}`}>
+                    {/* Game Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', background: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow)' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <div className="btn" style={{ background: '#f1c40f', padding: '0.4rem 0.8rem' }}><Star size={18} /> {stars}</div>
+                            <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Round {round}/5</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" onClick={onStartCapture} style={{ fontSize: '0.8rem' }}>📸 Save Result</button>
+                            {timerOn && <div className="timer-display" style={{ background: '#f8f9fa', padding: '0.4rem 0.8rem', borderRadius: '8px' }}><Clock size={16} /> Round Timer</div>}
+                        </div>
+                    </div>
 
-            <div className="game-responsive-grid">
-                <div className="main-area">
-                    <div className="card" style={{ border: '3px solid var(--primary)', textAlign: 'left', alignItems: 'flex-start' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{message}</h2>
-                        {showHint && (
-                            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f0f4f8', borderRadius: '8px', borderLeft: '4px solid var(--primary)', width: '100%' }}>
-                                <strong>Hint:</strong> {mode === 3 ? `Target: ₹${target}` : `Try adding ₹2 or ₹5 coins.`}
+                    <div className="game-responsive-grid">
+                        <div className="main-area">
+                            <div className="card" style={{ border: '3px solid var(--primary)', textAlign: 'left', alignItems: 'flex-start' }}>
+                                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{message}</h2>
+                                {showHint && (
+                                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#f0f4f8', borderRadius: '8px', borderLeft: '4px solid var(--primary)', width: '100%' }}>
+                                        <strong>Hint:</strong> {mode === 3 ? `Target: ₹${target}` : `Try adding ₹2 or ₹5 coins.`}
+                                    </div>
+                                )}
+                                {feedback === 'correct' && <div style={{ color: 'var(--success)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 /> Great Job!</div>}
+                                {feedback === 'wrong' && <div style={{ color: 'var(--danger)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><AlertCircle /> Try again!</div>}
                             </div>
-                        )}
-                        {feedback === 'correct' && <div style={{ color: 'var(--success)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle2 /> Great Job!</div>}
-                        {feedback === 'wrong' && <div style={{ color: 'var(--danger)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><AlertCircle /> Try again!</div>}
+
+                            <div style={{ marginTop: '1.5rem' }}>
+                                <h3>Your Basket:</h3>
+                                <div className="tray-container" style={{ minHeight: '100px', marginBottom: '1rem' }}>
+                                    {selectedCoins.length === 0 && <span style={{ color: '#94a3b8' }}>Tap coins below or use numbers 1-6</span>}
+                                    {selectedCoins.map((c, i) => (
+                                        <div key={i} className="coin" onClick={() => removeCoin(i)} style={{ width: '50px', height: '50px', fontSize: '0.8rem' }}>₹{c}</div>
+                                    ))}
+                                </div>
+
+                                <h3>Available Coins:</h3>
+                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                    {levelConfigs[level].coins.map(c => (
+                                        <div key={c} className="coin" onClick={() => addCoin(c)}>₹{c}</div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center', minWidth: '150px' }} onClick={handleSubmit}>SUBMIT PAYMENT (Enter)</button>
+                                    <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowHint(true)}><HelpCircle size={18} /> Hint</button>
+                                    <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelectedCoins([]); setCurrentTotal(0); }}><RefreshCw size={18} /> Clear</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="side-area">
+                            <div className="card" style={{ height: 'fit-content', background: 'var(--primary)', color: '#fff', padding: '1.5rem' }}>
+                                <h3>Total Paid</h3>
+                                <div style={{ fontSize: '3rem', fontWeight: 'bold', margin: '0.5rem 0' }}>₹{currentTotal}</div>
+                                <div style={{ background: 'rgba(255,255,255,0.2)', height: '120px', width: '30px', borderRadius: '15px', overflow: 'hidden', margin: '0 auto', position: 'relative' }}>
+                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', background: '#fff', height: `${Math.min((currentTotal / target) * 100, 100)}%`, transition: 'height 0.3s' }}></div>
+                                </div>
+                                <p style={{ textAlign: 'center', marginTop: '1rem', fontWeight: 'bold' }}>Target: ₹{target}</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div style={{ marginTop: '1.5rem' }}>
-                        <h3>Your Basket:</h3>
-                        <div className="tray-container" style={{ minHeight: '100px', marginBottom: '1rem' }}>
-                            {selectedCoins.length === 0 && <span style={{ color: '#94a3b8' }}>Tap coins below to pay</span>}
-                            {selectedCoins.map((c, i) => (
-                                <div key={i} className="coin" onClick={() => removeCoin(i)} style={{ width: '50px', height: '50px', fontSize: '0.8rem' }}>₹{c}</div>
-                            ))}
+                    {screenCapture && (
+                        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 2000, background: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxWidth: '200px' }}>
+                            <img src={screenCapture} alt="Achievement" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button className="btn btn-primary" onClick={handleDownload} style={{ fontSize: '0.7rem', padding: '0.3rem 0.5rem', flex: 1 }}>Download</button>
+                                <button className="btn btn-secondary" onClick={() => setScreenCapture('')} style={{ fontSize: '0.7rem', padding: '0.3rem 0.5rem' }}>Close</button>
+                            </div>
                         </div>
-
-                        <h3>Available Coins:</h3>
-                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {levelConfigs[level].coins.map(c => (
-                                <div key={c} className="coin" onClick={() => addCoin(c)}>₹{c}</div>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <button className="btn btn-primary" style={{ flex: 2, justifyContent: 'center', minWidth: '150px' }} onClick={handleSubmit}>SUBMIT PAYMENT</button>
-                            <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowHint(true)}><HelpCircle size={18} /> Hint</button>
-                            <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setSelectedCoins([]); setCurrentTotal(0); }}><RefreshCw size={18} /> Clear</button>
-                        </div>
-                    </div>
+                    )}
                 </div>
-
-                <div className="side-area">
-                    <div className="card" style={{ height: 'fit-content', background: 'var(--primary)', color: '#fff', padding: '1.5rem' }}>
-                        <h3>Total Paid</h3>
-                        <div style={{ fontSize: '3rem', fontWeight: 'bold', margin: '0.5rem 0' }}>₹{currentTotal}</div>
-                        <div style={{ background: 'rgba(255,255,255,0.2)', height: '120px', width: '30px', borderRadius: '15px', overflow: 'hidden', margin: '0 auto', position: 'relative' }}>
-                            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: '#fff', height: `${Math.min((currentTotal / target) * 100, 100)}%`, transition: 'height 0.3s' }}></div>
-                        </div>
-                        <p style={{ textAlign: 'center', marginTop: '1rem', fontWeight: 'bold' }}>Target: ₹{target}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+            )}
+        </ScreenCapture>
     );
 };
 

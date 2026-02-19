@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, RefreshCw, Star, Layers, CheckCircle2, AlertCircle, Play, Home, HelpCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ScreenCapture } from 'react-screen-capture';
 import { useUser } from '../context/UserContext';
 
 const PizzaBuilder = () => {
@@ -13,6 +14,7 @@ const PizzaBuilder = () => {
 
     // Round State
     const [round, setRound] = useState(1);
+    const [screenCapture, setScreenCapture] = useState('');
     const [mode, setMode] = useState('build'); // build, match, identify, mixed
     const [denominator, setDenominator] = useState(4);
     const [targetSlices, setTargetSlices] = useState(2);
@@ -95,6 +97,40 @@ const PizzaBuilder = () => {
         }
     }, [feedback, round, startTime]);
 
+    const handleScreenCapture = (screenCapture) => {
+        setScreenCapture(screenCapture);
+    };
+
+    const handleDownload = () => {
+        const base64Parts = screenCapture.split(',');
+        const contentType = base64Parts[0].split(':')[1].split(';')[0];
+        const base64Data = base64Parts[1];
+
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+            const slice = byteCharacters.slice(offset, offset + 512);
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+
+        const blob = new Blob(byteArrays, { type: contentType });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.download = 'pizza-achievement.png';
+        link.href = url;
+        link.click();
+
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    };
+
     const handleStart = () => {
         setGameState('playing');
         startNewRound(1);
@@ -138,6 +174,23 @@ const PizzaBuilder = () => {
             setFeedback('wrong');
         }
     };
+
+    // Keyboard Accessibility
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (gameState !== 'playing') return;
+
+            const keyNum = parseInt(e.key);
+            if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= denominator) {
+                setSlices(keyNum);
+            }
+
+            if (e.key === 'Enter') handleSubmit();
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [gameState, denominator, slices]);
 
     if (gameState === 'setup') {
         return (
@@ -187,6 +240,13 @@ const PizzaBuilder = () => {
                             </li>
                             <li style={{ marginTop: '0.5rem' }}>Try to get all 5 rounds correct to earn bonus stars!</li>
                         </ul>
+                        <div style={{ background: '#fff9f3', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid #ffd8a8' }}>
+                            <h4 style={{ margin: '0 0 0.5rem 0', color: '#e67e22' }}>⌨️ Keyboard Shortcuts</h4>
+                            <ul style={{ fontSize: '0.85rem', paddingLeft: '1.2rem', margin: 0 }}>
+                                <li><strong>1-8:</strong> Select number of slices</li>
+                                <li><strong>Enter:</strong> Submit pizza</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -212,86 +272,103 @@ const PizzaBuilder = () => {
     }
 
     return (
-        <div className={`game-layout ${calmMode ? 'calm-mode' : ''}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', background: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow)' }}>
-                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                    <div className="btn" style={{ background: '#f39c12', color: 'white', padding: '0.4rem 0.8rem' }}><Layers size={18} /> Level: {level}</div>
-                    <div className="btn" style={{ background: '#f1c40f', padding: '0.4rem 0.8rem' }}><Star size={18} /> {totalStars}</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Round {round}/5</div>
-                </div>
-                {timerOn && <div className="timer-display" style={{ background: '#f8f9fa', padding: '0.4rem 0.8rem', borderRadius: '8px' }}><Clock size={16} /> Round Timer</div>}
-            </div>
-
-            <div className="game-responsive-grid">
-                <div className="main-area">
-                    <div className="card" style={{ border: '3px solid #e67e22', textAlign: 'left', alignItems: 'flex-start' }}>
-                        <h3 style={{ margin: '0 0 0.5rem 0' }}>Task: {message}</h3>
-                        {feedback === 'correct' && <p style={{ color: 'var(--success)', fontWeight: 'bold', margin: '0.5rem 0' }}>Fantastic! NICE BUILDING!</p>}
-                        {feedback === 'wrong' && <p style={{ color: 'var(--danger)', margin: '0.5rem 0' }}>Try again! Count the slices.</p>}
-                        {showHint && (
-                            <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: '#fff9f3', borderRadius: '8px', borderLeft: '4px solid #e67e22', width: '100%' }}>
-                                {level === 'Easy' ? `Make ${targetLabel} pizza.` : `You need ${targetSlices} out of ${denominator} slices.`}
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-                        <div className="pizza-area">
-                            <svg width="100%" height="100%" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="45" fill="#f3e5ab" stroke="#8b4513" strokeWidth="2" />
-                                {[...Array(denominator)].map((_, i) => {
-                                    const angle = (i * 360) / denominator;
-                                    return (
-                                        <line key={i} x1="50" y1="50" x2={50 + 45 * Math.cos((angle * Math.PI) / 180)} y2={50 + 45 * Math.sin((angle * Math.PI) / 180)} stroke="#8b4513" strokeOpacity="0.2" strokeWidth="0.5" />
-                                    );
-                                })}
-                                {[...Array(slices)].map((_, i) => {
-                                    const startAngle = (i * 360) / denominator;
-                                    const endAngle = ((i + 1) * 360) / denominator;
-                                    const x1 = 50 + 45 * Math.cos((startAngle * Math.PI) / 180);
-                                    const y1 = 50 + 45 * Math.sin((startAngle * Math.PI) / 180);
-                                    const x2 = 50 + 45 * Math.cos((endAngle * Math.PI) / 180);
-                                    const y2 = 50 + 45 * Math.sin((endAngle * Math.PI) / 180);
-                                    const d = `M 50 50 L ${x1} ${y1} A 45 45 0 0 1 ${x2} ${y2} Z`;
-                                    return <path key={i} d={d} fill="#ff5733" stroke="#c0392b" strokeWidth="0.5" className="pizza-slice-anim" />;
-                                })}
-                            </svg>
+        <ScreenCapture onEndCapture={handleScreenCapture}>
+            {({ onStartCapture }) => (
+                <div className={`game-layout ${calmMode ? 'calm-mode' : ''}`}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', background: '#fff', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow)' }}>
+                        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                            <div className="btn" style={{ background: '#f39c12', color: 'white', padding: '0.4rem 0.8rem' }}><Layers size={18} /> Level: {level}</div>
+                            <div className="btn" style={{ background: '#f1c40f', padding: '0.4rem 0.8rem' }}><Star size={18} /> {totalStars}</div>
+                            <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>Round {round}/5</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-secondary" onClick={onStartCapture} style={{ fontSize: '0.8rem' }}>📸 Capture Pizza</button>
+                            {timerOn && <div className="timer-display" style={{ background: '#f8f9fa', padding: '0.4rem 0.8rem', borderRadius: '8px' }}><Clock size={16} /> Round Timer</div>}
                         </div>
                     </div>
 
-                    <div className="tray-container" style={{ marginTop: '1rem' }}>
-                        {[...Array(denominator)].map((_, i) => (
-                            <div
-                                key={i}
-                                onClick={() => toggleSlice(i)}
-                                className="coin"
-                                style={{
-                                    background: i < slices ? '#ff5733' : '#fff',
-                                    border: '2px solid #e67e22', borderRadius: '8px',
-                                    color: i < slices ? '#fff' : '#e67e22',
-                                    width: '45px', height: '45px'
-                                }}
-                            >
-                                {i + 1}
+                    <div className="game-responsive-grid">
+                        <div className="main-area">
+                            <div className="card" style={{ border: '3px solid #e67e22', textAlign: 'left', alignItems: 'flex-start' }}>
+                                <h3 style={{ margin: '0 0 0.5rem 0' }}>Task: {message}</h3>
+                                {feedback === 'correct' && <p style={{ color: 'var(--success)', fontWeight: 'bold', margin: '0.5rem 0' }}>Fantastic! NICE BUILDING!</p>}
+                                {feedback === 'wrong' && <p style={{ color: 'var(--danger)', margin: '0.5rem 0' }}>Try again! Count the slices.</p>}
+                                {showHint && (
+                                    <div style={{ marginTop: '0.5rem', padding: '0.8rem', background: '#fff9f3', borderRadius: '8px', borderLeft: '4px solid #e67e22', width: '100%' }}>
+                                        {level === 'Easy' ? `Make ${targetLabel} pizza.` : `You need ${targetSlices} out of ${denominator} slices.`}
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                    </div>
-                </div>
 
-                <div className="side-area">
-                    <div className="card" style={{ background: '#f8f9fa', padding: '1.5rem', border: 'none', boxShadow: 'none' }}>
-                        <h3>Progress Meter</h3>
-                        <div style={{ border: '2px solid #ddd', borderRadius: '15px', height: '150px', width: '30px', margin: '1rem auto', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${(slices / denominator) * 100}%`, background: '#e67e22', transition: 'height 0.3s' }}></div>
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                                <div className="pizza-area">
+                                    <svg width="100%" height="100%" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="45" fill="#f3e5ab" stroke="#8b4513" strokeWidth="2" />
+                                        {[...Array(denominator)].map((_, i) => {
+                                            const angle = (i * 360) / denominator;
+                                            return (
+                                                <line key={i} x1="50" y1="50" x2={50 + 45 * Math.cos((angle * Math.PI) / 180)} y2={50 + 45 * Math.sin((angle * Math.PI) / 180)} stroke="#8b4513" strokeOpacity="0.2" strokeWidth="0.5" />
+                                            );
+                                        })}
+                                        {[...Array(slices)].map((_, i) => {
+                                            const startAngle = (i * 360) / denominator;
+                                            const endAngle = ((i + 1) * 360) / denominator;
+                                            const x1 = 50 + 45 * Math.cos((startAngle * Math.PI) / 180);
+                                            const y1 = 50 + 45 * Math.sin((startAngle * Math.PI) / 180);
+                                            const x2 = 50 + 45 * Math.cos((endAngle * Math.PI) / 180);
+                                            const y2 = 50 + 45 * Math.sin((endAngle * Math.PI) / 180);
+                                            const d = `M 50 50 L ${x1} ${y1} A 45 45 0 0 1 ${x2} ${y2} Z`;
+                                            return <path key={i} d={d} fill="#ff5733" stroke="#c0392b" strokeWidth="0.5" className="pizza-slice-anim" />;
+                                        })}
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="tray-container" style={{ marginTop: '1rem' }}>
+                                {[...Array(denominator)].map((_, i) => (
+                                    <div
+                                        key={i}
+                                        onClick={() => toggleSlice(i)}
+                                        className="coin"
+                                        style={{
+                                            background: i < slices ? '#ff5733' : '#fff',
+                                            border: '2px solid #e67e22', borderRadius: '8px',
+                                            color: i < slices ? '#fff' : '#e67e22',
+                                            width: '45px', height: '45px'
+                                        }}
+                                    >
+                                        {i + 1}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <p style={{ textAlign: 'center', fontWeight: 'bold' }}>{slices} / {denominator}</p>
 
-                        <button className='btn btn-primary' style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }} onClick={() => handleSubmit()}>SUBMIT</button>
-                        <button className='btn btn-secondary' style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'center' }} onClick={() => setShowHint(!showHint)}><HelpCircle size={16} /> Hint</button>
+                        <div className="side-area">
+                            <div className="card" style={{ background: '#f8f9fa', padding: '1.5rem', border: 'none', boxShadow: 'none' }}>
+                                <h3>Progress Meter</h3>
+                                <div style={{ border: '2px solid #ddd', borderRadius: '15px', height: '150px', width: '30px', margin: '1rem auto', position: 'relative', overflow: 'hidden' }}>
+                                    <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${(slices / denominator) * 100}%`, background: '#e67e22', transition: 'height 0.3s' }}></div>
+                                </div>
+                                <p style={{ textAlign: 'center', fontWeight: 'bold' }}>{slices} / {denominator}</p>
+
+                                <button className='btn btn-primary' style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }} onClick={() => handleSubmit()}>SUBMIT (Enter)</button>
+                                <button className='btn btn-secondary' style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'center' }} onClick={() => setShowHint(!showHint)}><HelpCircle size={16} /> Hint</button>
+                            </div>
+                        </div>
                     </div>
+
+                    {screenCapture && (
+                        <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 2000, background: 'white', padding: '10px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxWidth: '200px' }}>
+                            <img src={screenCapture} alt="Achievement" style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }} />
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button className="btn btn-primary" onClick={handleDownload} style={{ fontSize: '0.7rem', padding: '0.3rem 0.5rem', flex: 1 }}>Download</button>
+                                <button className="btn btn-secondary" onClick={() => setScreenCapture('')} style={{ fontSize: '0.7rem', padding: '0.3rem 0.5rem' }}>Close</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
-        </div>
+            )}
+        </ScreenCapture>
     );
 };
 

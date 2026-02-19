@@ -113,3 +113,19 @@ Visualization is the bridge between abstract numbers and tangible understanding.
 - **GitHub Repository:** [https://github.com/uhashini/autism-math-portal](https://github.com/uhashini/autism-math-portal)
 - **Collaborator - Academic:** Amrita Vishwa Vidyapeetham
 - **Collaborator - Industry:** Microsoft Philanthropies / Education AI Division
+
+---
+
+## 12. Pedagogical Research & Interaction Strategies
+
+### List of Research Articles
+| Article Title | Key Strategy Identified | Relevance to Portal |
+| :--- | :--- | :--- |
+| **Visual-Tactile ASD Integration (2024)** | CRA (Concrete-Representational-Abstract) | Used in Pizza Builder to move from slices to fraction symbols. |
+| **Simulation-based Shopping (2024)** | Real-time Visual Feedback loops | Implemented in Snack Shop as the "Total Meter" and currency logic. |
+| **Multi-Sensory UX Patterns (2025)** | Multi-modal Input (Keyboard + Mouse) | Reducing frustration for children with fine motor difficulties. |
+
+### Chosen Strategy for Interaction Enhancement
+The **Multi-Modal Interaction Strategy** was selected to improve accessibility. 
+- **Reasoning:** Many children with ASD experience "fine motor delay," making precise mouse clicking difficult. By adding **Keyboard Mapping**, we allow them to interact using larger physical keys (Number Row) to pick coins or pizza slices.
+- **Novelty:** The inclusion of a **Screen Capture operation** acts as a "Digital Reward System," allowing the student to capture their successful pizza or shop total, building self-esteem through visual proof of success.
