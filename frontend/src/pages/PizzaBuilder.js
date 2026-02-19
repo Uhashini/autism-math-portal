@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Star, Layers, CheckCircle2, AlertCircle, Play, Home, HelpCircle, Clock } from 'lucide-react';
+import { Star, Layers, CheckCircle2, Play, Home, HelpCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ScreenCapture } from 'react-screen-capture';
 import { useUser } from '../context/UserContext';
@@ -22,7 +22,6 @@ const PizzaBuilder = () => {
     const [message, setMessage] = useState('');
     const [feedback, setFeedback] = useState(null);
     const [showHint, setShowHint] = useState(false);
-    const [options, setOptions] = useState([]); // For identification mode
     const [targetLabel, setTargetLabel] = useState("");
 
     // Stats
@@ -77,7 +76,7 @@ const PizzaBuilder = () => {
                 const target = Math.floor(Math.random() * (config.denominator - 1)) + 1;
                 setSlices(target);
                 setTargetSlices(target);
-                setOptions([`${target}/${config.denominator}`, `${(target + 1) % config.denominator || 1}/${config.denominator}`, `1/2`]);
+                // setOptions was here
                 setMessage("Which fraction is this pizza?");
             } else if (config.mode === 'match') {
                 setTargetSlices(4); // Fixed comparison for simplicity
@@ -190,6 +189,7 @@ const PizzaBuilder = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState, denominator, slices]);
 
     if (gameState === 'setup') {

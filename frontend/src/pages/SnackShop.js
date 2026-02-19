@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Star, Coins, HelpCircle, CheckCircle2, AlertCircle, Play, Home, Clock } from 'lucide-react';
+import { Star, HelpCircle, CheckCircle2, AlertCircle, Play, Home, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ScreenCapture } from 'react-screen-capture';
 import { useUser } from '../context/UserContext';
@@ -26,7 +26,6 @@ const SnackShop = () => {
     // Stats
     const [score, setScore] = useState(0);
     const [stars, setStars] = useState(0);
-    const [hintsUsed, setHintsUsed] = useState(0);
     const [startTime, setStartTime] = useState(null);
     const [results, setResults] = useState([]);
 
@@ -213,6 +212,7 @@ const SnackShop = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState, level, selectedCoins, currentTotal]);
 
     if (gameState === 'setup') {
