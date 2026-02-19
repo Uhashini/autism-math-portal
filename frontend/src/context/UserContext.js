@@ -3,30 +3,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-    // Load initial state from localStorage
-    const getInitialProgress = () => {
-        const saved = localStorage.getItem('autism_portal_progress');
-        const defaultProgress = {
-            totalStars: 0,
-            totalScore: 0,
-            streak: 0,
-            lastPlayed: null, // YYYY-MM-DD
-            snackShopAccuracy: 0,
-            pizzaBuilderAccuracy: 0,
-            sessions: 0,
-            totalTime: 0
-        };
-        return saved ? JSON.parse(saved) : defaultProgress;
-    };
-
-    const getInitialSettings = () => {
-        const saved = localStorage.getItem('autism_portal_settings');
-        return saved ? JSON.parse(saved) : {
-            calmMode: false,
-            timerActive: true,
-            errorFreeMode: true
-        };
-    };
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const [user, setUser] = useState({
         name: "N. Uhashini",
@@ -34,25 +12,76 @@ export const UserProvider = ({ children }) => {
         photo: "/placeholder.jpg"
     });
 
-    const [settings, setSettings] = useState(getInitialSettings);
-    const [progress, setProgress] = useState(getInitialProgress);
+    const [settings, setSettings] = useState(() => {
+        const saved = localStorage.getItem('autism_portal_settings');
+        return saved ? JSON.parse(saved) : {
+            calmMode: false,
+            timerActive: true,
+            errorFreeMode: true
+        };
+    });
 
-    // Save to localStorage whenever state changes
+    const [progress, setProgress] = useState({
+        totalStars: 0,
+        totalScore: 0,
+        streak: 0,
+        lastPlayed: null,
+        snackShopAccuracy: 0,
+        pizzaBuilderAccuracy: 0,
+        sessions: 0,
+        totalTime: 0
+    });
+
+    // 1. Fetch data from Backend on mount
     useEffect(() => {
-        localStorage.setItem('autism_portal_progress', JSON.stringify(progress));
-    }, [progress]);
+        const fetchData = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/data');
+                if (!response.ok) throw new Error('Failed to connect to backend');
+                const data = await response.json();
 
+                if (data.user) setUser(data.user);
+                if (data.progress) setProgress(data.progress);
+                setLoading(false);
+            } catch (err) {
+                console.error("Backend error:", err);
+                setError("Working in Offline Mode (LocalStorage)");
+                // Fallback to localStorage if backend fails
+                const saved = localStorage.getItem('autism_portal_progress');
+                if (saved) setProgress(JSON.parse(saved));
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // 2. Sync Settings to localStorage (Local concern only)
     useEffect(() => {
         localStorage.setItem('autism_portal_settings', JSON.stringify(settings));
     }, [settings]);
 
-    const updateProgress = (gameData) => {
-        setProgress(prev => {
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // 3. Sync Progress to Backend whenever it changes
+    const syncToBackend = async (newProgress) => {
+        try {
+            await fetch('http://localhost:5000/api/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ progress: newProgress })
+            });
+            localStorage.setItem('autism_portal_progress', JSON.stringify(newProgress));
+        } catch (err) {
+            console.error("Sync error:", err);
+            localStorage.setItem('autism_portal_progress', JSON.stringify(newProgress));
+        }
+    };
 
+    const updateProgress = (gameData) => {
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        setProgress(prev => {
             let newStreak = prev.streak;
             if (prev.lastPlayed !== today) {
                 if (prev.lastPlayed === yesterdayStr) {
@@ -66,18 +95,18 @@ export const UserProvider = ({ children }) => {
 
             const newScore = prev.totalScore + (gameData.score || 0);
             const newStars = prev.totalStars + (gameData.stars || 0);
-            const newSessions = prev.sessions + 1;
+            const newSessions = (prev.sessions || 0) + 1;
 
-            let newSnackAcc = prev.snackShopAccuracy;
-            let newPizzaAcc = prev.pizzaBuilderAccuracy;
+            let newSnackAcc = prev.snackShopAccuracy || 0;
+            let newPizzaAcc = prev.pizzaBuilderAccuracy || 0;
 
             if (gameData.gameType === 'snack') {
-                newSnackAcc = Math.round((prev.snackShopAccuracy * (newSessions - 1) + gameData.accuracy) / newSessions);
+                newSnackAcc = Math.round(((prev.snackShopAccuracy || 0) * (newSessions - 1) + gameData.accuracy) / newSessions);
             } else if (gameData.gameType === 'pizza') {
-                newPizzaAcc = Math.round((prev.pizzaBuilderAccuracy * (newSessions - 1) + gameData.accuracy) / newSessions);
+                newPizzaAcc = Math.round(((prev.pizzaBuilderAccuracy || 0) * (newSessions - 1) + gameData.accuracy) / newSessions);
             }
 
-            return {
+            const nextProgress = {
                 ...prev,
                 totalScore: newScore,
                 totalStars: newStars,
@@ -86,8 +115,12 @@ export const UserProvider = ({ children }) => {
                 pizzaBuilderAccuracy: newPizzaAcc,
                 streak: newStreak,
                 lastPlayed: today,
-                totalTime: prev.totalTime + (gameData.time || 0)
+                totalTime: (prev.totalTime || 0) + (gameData.time || 0)
             };
+
+            // Trigger async sync
+            syncToBackend(nextProgress);
+            return nextProgress;
         });
     };
 
@@ -104,7 +137,9 @@ export const UserProvider = ({ children }) => {
             toggleCalmMode,
             toggleTimer,
             toggleErrorFree,
-            setUser
+            setUser,
+            loading,
+            error
         }}>
             {children}
         </UserContext.Provider>
